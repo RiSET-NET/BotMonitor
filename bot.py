@@ -66,6 +66,11 @@ def get_data_usage():
     except Exception as e:
         return f"⚠️ Terjadi kesalahan saat mengambil informasi penggunaan data: {e}"
 
+# Fungsi untuk menangani perintah "monitor"
+async def handle_monitor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    data_usage = get_data_usage()
+    await update.message.reply_text(data_usage, parse_mode="Markdown")
+
 # Fungsi untuk mendapatkan informasi perangkat
 def get_device_info():
     try:
@@ -140,6 +145,7 @@ def main():
     application.add_handler(CommandHandler("info", lambda u, c: execute_with_menu(handle_info, u, c)))
     application.add_handler(CommandHandler("pesawat", lambda u, c: execute_with_menu(handle_airplane, u, c)))
     application.add_handler(CommandHandler("baterai", lambda u, c: execute_with_menu(handle_battery, u, c)))
+    application.add_handler(CommandHandler("monitor", lambda u, c: execute_with_menu(handle_monitor, u, c)))
     application.add_handler(CommandHandler("menu", handle_menu))
 
     # Jalankan bot
