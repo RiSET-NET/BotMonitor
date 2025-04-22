@@ -99,7 +99,62 @@ def get_data_usage():
 async def handle_monitor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     data_usage = get_data_usage()
     await update.message.reply_text(data_usage, parse_mode="Markdown")
+    
+# Fungsi untuk mendapatkan informasi perangkat yang terhubung ke hotspot
+def get_hotspot_info():
+    try:
+        result = subprocess.run(['adb', 'shell', 'ip', 'neigh'], stdout=subprocess.PIPE, text=True)
+        raw_info = result.stdout.strip()
+        connected_devices = []
 
+        # Parsing informasi perangkat yang terhubung
+        for line in raw_info.splitlines():
+            if "REACHABLE" in line:
+                parts = line.split()
+                ip_address = parts[0]
+                mac_address = parts[4]
+                connected_devices.append(f"IP: `{ip_address}`, MAC: `{mac_address}`")
+
+        if not connected_devices:
+            return "❌ Tidak ada perangkat yang terhubung ke hotspot."
+        return "📡 *Perangkat yang Terhubung ke Hotspot:*\n\n" + "\n".join(connected_devices)
+    except Exception as e:
+        return f"⚠️ Terjadi kesalahan saat mengambil informasi perangkat yang terhubung ke hotspot: {e}"
+
+# Fungsi untuk memeriksa informasi 4G dan operator
+def get_operator_info():
+    try:
+        result = subprocess.run(['adb', 'shell', 'getprop'], stdout=subprocess.PIPE, text=True)
+        raw_info = result.stdout.strip()
+        important_keys = {
+            "gsm.sim.operator.alpha": "SIM",
+            "gsm.operator.alpha": "Operator",
+            "gsm.network.type": "Network Type",
+            "gsm.operator.iso-country": "Country",
+            "gsm.sim.operator.imsi": "IMSI",
+            "gsm.sim.operator.numeric": "Operator Code",
+        }
+        operator_info = {}
+        for line in raw_info.splitlines():
+            if line.startswith("[") and "]: [" in line:
+                key, value = line[1:].split("]: [", 1)
+                value = value[:-1]
+                if key in important_keys:
+                    operator_info[important_keys[key]] = value
+
+        if not operator_info:
+            return "❌ Tidak ada informasi operator yang ditemukan."
+        formatted_info = "\n".join([f"📡 *{key}*: `{value}`" for key, value in operator_info.items()])
+        return f"📡 *Informasi Jaringan dan Operator:*\n\n{formatted_info}"
+    except Exception as e:
+        return f"⚠️ Terjadi kesalahan saat mengambil informasi operator: {e}"
+
+# Fungsi untuk menangani perintah "operator"
+async def handle_operator(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    operator_info = get_operator_info()
+    hotspot_info = get_hotspot_info()
+    await update.message.reply_text(f"{operator_info}\n\n{hotspot_info}", parse_mode="Markdown")
+    
 # Fungsi untuk mendapatkan informasi perangkat
 def get_device_info():
     try:
@@ -143,12 +198,13 @@ async def handle_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     menu_text = (
         "📜 *Menu Perintah Bot:*\n\n"
-        "1. 📱 */info*: Informasi perangkat.\n"
-        "2. ✈️ */pesawat*: *'Fitur sedang Maintenance'*.\n"
-        "3. 🔋 */baterai*: Status baterai perangkat.\n"
-        "4. 📊 */monitor*: bandwidth Vnstat.\n"
-        "5. ♻️ */reboot*: Me-reboot perangkat.\n"
-        "6. 🌐 */clash*: MetaCubeXD dan Zashboard.\n"
+        "📱 */info*: Informasi perangkat.\n"
+        "📡 */operator*: Informasi Operator.\n"
+        "✈️ */pesawat*: *'Fitur sedang Maintenance'*.\n"
+        "🔋 */baterai*: Status baterai perangkat.\n"
+        "📊 */monitor*: bandwidth Vnstat.\n"
+        "♻️ */reboot*: Me-reboot perangkat.\n"
+        "🌐 */clash*: MetaCubeXD dan Zashboard.\n"
     )
     await update.message.reply_text(menu_text, parse_mode="Markdown")
 
@@ -174,6 +230,7 @@ def main():
 
     # Tambahkan handler untuk setiap perintah dengan wrapper
     application.add_handler(CommandHandler("start", lambda u, c: execute_with_menu(start, u, c)))
+    application.add_handler(CommandHandler("operator", lambda u, c: execute_with_menu(handle_operator, u, c)))
     application.add_handler(CommandHandler("info", lambda u, c: execute_with_menu(handle_info, u, c)))
     application.add_handler(CommandHandler("pesawat", lambda u, c: execute_with_menu(handle_airplane, u, c)))
     application.add_handler(CommandHandler("baterai", lambda u, c: execute_with_menu(handle_battery, u, c)))
