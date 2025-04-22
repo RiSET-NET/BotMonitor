@@ -1,5 +1,6 @@
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram.helpers import escape_markdown
 import subprocess
 import json
 import asyncio
@@ -261,15 +262,30 @@ async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 # Fungsi untuk menangani perintah "pesawat"
 async def handle_airplane(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     try:
+        # Jalankan konfigurasi tambahan sebelum mengaktifkan mode pesawat
+        subprocess.run(['adb', 'shell', 'settings', 'put', 'global', 'airplane_mode_radios', 'cell,nfc,wimax'], check=True)
+        subprocess.run(['adb', 'shell', 'content', 'update', '--uri', 'content://settings/global', '--bind', "value:s:'cell,nfc,wimax'", '--where', "name='airplane_mode_radios'"], check=True)
+
         # Jalankan file bash untuk mengaktifkan dan menonaktifkan mode pesawat
         result = subprocess.run(['bash', 'airplane.sh'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         
         if result.returncode == 0:
-            await update.message.reply_text("✈️ Mode pesawat telah diaktifkan dan dinonaktifkan kembali dalam 2 detik.", parse_mode="Markdown")
+            await update.message.reply_text("✈️ Mode pesawat telah diaktifkan dan dinonaktifkan kembali dalam 2 detik.", parse_mode="MarkdownV2")
         else:
-            await update.message.reply_text(f"⚠️ Gagal menjalankan perintah pesawat: {result.stderr}", parse_mode="Markdown")
+            await update.message.reply_text(
+                f"⚠️ Gagal menjalankan perintah pesawat: {escape_markdown(result.stderr, version=2)}",
+                parse_mode="MarkdownV2"
+            )
+    except subprocess.CalledProcessError as e:
+        await update.message.reply_text(
+            f"⚠️ Terjadi kesalahan saat menjalankan perintah pesawat: {escape_markdown(str(e), version=2)}",
+            parse_mode="MarkdownV2"
+        )
     except Exception as e:
-        await update.message.reply_text(f"⚠️ Terjadi kesalahan saat menjalankan perintah pesawat: {e}", parse_mode="Markdown")
+        await update.message.reply_text(
+            f"⚠️ Terjadi kesalahan umum: {escape_markdown(str(e), version=2)}",
+            parse_mode="MarkdownV2"
+        )
 
 # Wrapper untuk menampilkan menu setelah setiap perintah
 async def execute_with_menu(command_function, update, context):
