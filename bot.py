@@ -250,7 +250,7 @@ async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         "📜 *Perintah ADB-BOT:*\n\n"
         "📱 */info*: Informasi perangkat.\n"
         "📡 */operator*: Informasi Operator.\n"
-        "✈️ */pesawat*: *'Fitur sedang Maintenance'*.\n"
+        "✈️ */pesawat*: Airplane Auto.\n"
         "🔋 */baterai*: Status baterai perangkat.\n"
         "📊 */monitor*: bandwidth Vnstat.\n"
         "♻️ */reboot*: Me-reboot perangkat.\n"
