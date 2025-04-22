@@ -6,6 +6,9 @@ import json
 import asyncio
 import re
 import socket
+import speedtest
+import psutil
+import time
 
 # Fungsi untuk mengonversi byte ke format KB, MB, atau GB secara dinamis
 def format_size(bytes):
@@ -111,6 +114,31 @@ async def handle_monitor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     data_usage = get_data_usage()
     await update.message.reply_text(data_usage, parse_mode="Markdown")
     
+# Fungsi untuk menangani perintah "speedtest"
+async def handle_speedtest(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    try:
+        st = speedtest.Speedtest()
+        st.get_best_server()
+        download_speed = st.download() / 1_000_000  # Convert to Mbps
+        upload_speed = st.upload() / 1_000_000  # Convert to Mbps
+        await update.message.reply_text(
+            f"📶 *Hasil Speedtest:*\n\n"
+            f"⬇️ *Download*: `{download_speed:.2f} Mbps`\n"
+            f"⬆️ *Upload*: `{upload_speed:.2f} Mbps`",
+            parse_mode="Markdown"
+        )
+    except Exception as e:
+        await update.message.reply_text(f"⚠️ Terjadi kesalahan saat melakukan speedtest: {e}")
+        
+# Fungsi untuk menangani perintah "ping"
+async def handle_ping(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    try:
+        target = "8.8.8.8"  # Google DNS
+        result = subprocess.run(['ping', '-c', '4', target], stdout=subprocess.PIPE, text=True)
+        await update.message.reply_text(f"🌐 *Hasil Ping ke {target}:*\n\n```\n{result.stdout}\n```", parse_mode="Markdown")
+    except Exception as e:
+        await update.message.reply_text(f"⚠️ Terjadi kesalahan saat melakukan ping: {e}")        
+        
 # Fungsi untuk mendapatkan informasi perangkat yang terhubung ke hotspot
 def get_hotspot_info():
     try:
@@ -165,6 +193,30 @@ async def handle_operator(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     operator_info = get_operator_info()
     hotspot_info = get_hotspot_info()
     await update.message.reply_text(f"{operator_info}\n\n{hotspot_info}", parse_mode="Markdown")
+    
+# Fungsi untuk menangani perintah "load"
+async def handle_load(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    try:
+        # Informasi penggunaan RAM
+        mem = psutil.virtual_memory()
+        total_ram = mem.total
+        used_ram = mem.used
+        available_ram = mem.available
+
+        # Lama perangkat menyala (uptime)
+        uptime_seconds = time.time() - psutil.boot_time()
+        uptime_formatted = time.strftime("%H:%M:%S", time.gmtime(uptime_seconds))
+
+        await update.message.reply_text(
+            f"🖥️ *Informasi Sistem:*\n\n"
+            f"💾 *RAM Total*: `{format_size(total_ram)}`\n"
+            f"📈 *RAM Terpakai*: `{format_size(used_ram)}`\n"
+            f"📉 *RAM Tersedia*: `{format_size(available_ram)}`\n"
+            f"⏳ *Lama Menyala*: `{uptime_formatted}`",
+            parse_mode="Markdown"
+        )
+    except Exception as e:
+        await update.message.reply_text(f"⚠️ Terjadi kesalahan saat mengambil informasi sistem: {e}")    
     
 # Fungsi untuk mendapatkan informasi perangkat
 def get_device_info():
@@ -265,6 +317,9 @@ async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         "📊 */monitor*: bandwidth Vnstat.\n"
         "♻️ */reboot*: Me-reboot perangkat.\n"
         "🌐 */clash*: MetaCubeXD dan Zashboard.\n"
+        "📶 */speedtest*: Melakukan tes kecepatan internet.\n"
+        "🌐 */ping*: Melakukan ping ke Google DNS.\n"
+        "🖥️ */load*: Informasi RAM dan lama perangkat menyala.\n"
     )
     await update.message.reply_text(menu_text, parse_mode="Markdown")
 
@@ -314,6 +369,9 @@ def main():
 
     # Tambahkan handler untuk setiap perintah dengan wrapper
     application.add_handler(CommandHandler("start", lambda u, c: execute_with_menu(start, u, c)))
+    application.add_handler(CommandHandler("speedtest", lambda u, c: execute_with_menu(handle_speedtest, u, c)))
+    application.add_handler(CommandHandler("ping", lambda u, c: execute_with_menu(handle_ping, u, c)))
+    application.add_handler(CommandHandler("load", lambda u, c: execute_with_menu(handle_load, u, c)))
     application.add_handler(CommandHandler("operator", lambda u, c: execute_with_menu(handle_operator, u, c)))
     application.add_handler(CommandHandler("clash", lambda u, c: execute_with_menu(handle_clash, u, c)))
     application.add_handler(CommandHandler("info", lambda u, c: execute_with_menu(handle_info, u, c)))
