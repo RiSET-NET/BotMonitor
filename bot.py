@@ -110,10 +110,14 @@ def get_device_info():
         result = subprocess.run(['adb', 'shell', 'getprop'], stdout=subprocess.PIPE, text=True)
         raw_info = result.stdout.strip()
         important_keys = {
+            "persist.sys.timezone": "TimeZone",
             "ro.product.model": "Model",
             "ro.product.brand": "Brand",
             "ro.build.version.release": "Android Version",
             "ro.serialno": "Serial Number",
+            "ro.product.board": "Cpu Model",
+            "dalvik.vm.isa.arm.variant": "Processors",
+            "ro.alpha.build.version": "Rom",
         }
         info = {}
         for line in raw_info.splitlines():
@@ -139,13 +143,12 @@ async def handle_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     menu_text = (
         "📜 *Menu Perintah Bot:*\n\n"
-        "1. 📱 *info*: Menampilkan informasi perangkat.\n"
-        "2. ✈️ *pesawat*: Mengirimkan status *'Fitur sedang Maintenance'*.\n"
-        "3. 🔋 *baterai*: Menampilkan status baterai perangkat.\n"
-        "4. 📊 *monitor*: Menampilkan informasi penggunaan data perangkat.\n"
-        "5. ♻️ *reboot*: Me-reboot perangkat.\n"
-        "6. 🌐 *clash*: Mengirimkan tautan MetaCubeXD dan Zashboard.\n"
-        "7. 🏠 *menu*: Menampilkan menu ini."
+        "1. 📱 */info*: Informasi perangkat.\n"
+        "2. ✈️ */pesawat*: *'Fitur sedang Maintenance'*.\n"
+        "3. 🔋 */baterai*: Status baterai perangkat.\n"
+        "4. 📊 */monitor*: bandwidth Vnstat.\n"
+        "5. ♻️ */reboot*: Me-reboot perangkat.\n"
+        "6. 🌐 */clash*: MetaCubeXD dan Zashboard.\n"
     )
     await update.message.reply_text(menu_text, parse_mode="Markdown")
 
