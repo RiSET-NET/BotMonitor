@@ -247,7 +247,7 @@ async def handle_reboot(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 # Fungsi untuk menampilkan menu
 async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     menu_text = (
-        "📜 *Menu Perintah Bot:*\n\n"
+        "📜 *Perintah ADB-BOT:*\n\n"
         "📱 */info*: Informasi perangkat.\n"
         "📡 */operator*: Informasi Operator.\n"
         "✈️ */pesawat*: *'Fitur sedang Maintenance'*.\n"
@@ -258,9 +258,32 @@ async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     )
     await update.message.reply_text(menu_text, parse_mode="Markdown")
 
-# Fungsi untuk menangani perintah "pesawat" (sekarang hanya menampilkan pesan Maintenance)
+# Fungsi untuk menangani perintah "pesawat"
 async def handle_airplane(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text("✈️ *Fitur sedang Maintenance*", parse_mode="Markdown")
+    try:
+        # Jalankan perintah awal yang diminta
+        subprocess.run(['adb', 'shell', 'settings', 'put', 'global', 'airplane_mode_radios', 'cell,nfc,wimax'], check=True)
+        subprocess.run([
+            'adb', 'shell', 'content', 'update', '--uri', 'content://settings/global',
+            '--bind', 'value:s:cell,nfc,wimax', '--where', "name='airplane_mode_radios'"
+        ], check=True)
+
+        # Aktifkan mode pesawat
+        subprocess.run(['adb', 'shell', 'settings', 'put', 'global', 'airplane_mode_on', '1'], check=True)
+        subprocess.run(['adb', 'shell', 'am', 'broadcast', '-a', 'android.intent.action.AIRPLANE_MODE'], check=True)
+
+        # Tunggu 2 detik
+        await asyncio.sleep(2)
+
+        # Nonaktifkan mode pesawat
+        subprocess.run(['adb', 'shell', 'settings', 'put', 'global', 'airplane_mode_on', '0'], check=True)
+        subprocess.run(['adb', 'shell', 'am', 'broadcast', '-a', 'android.intent.action.AIRPLANE_MODE'], check=True)
+
+        await update.message.reply_text("✈️ Mode pesawat telah diaktifkan dan dinonaktifkan kembali dalam 2 detik.", parse_mode="Markdown")
+    except subprocess.CalledProcessError as e:
+        await update.message.reply_text(f"⚠️ Terjadi kesalahan saat menjalankan perintah: {e}", parse_mode="Markdown")
+    except Exception as e:
+        await update.message.reply_text(f"⚠️ Terjadi kesalahan: {e}", parse_mode="Markdown")
 
 # Wrapper untuk menampilkan menu setelah setiap perintah
 async def execute_with_menu(command_function, update, context):
@@ -274,7 +297,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 # Fungsi utama
 def main():
     # Token bot Telegram Anda
-    TOKEN = "7894823712:AAH1ScVaEgfYSV_hOl6ejLFuKhi4gKem0vs"
+    TOKEN = "7894823712:AAH1ScVaEgfYSV_hOl6ejLFuKhi4gKem0vs" 
 
     application = Application.builder().token(TOKEN).build()
 
