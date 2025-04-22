@@ -96,6 +96,11 @@ def get_device_info():
     except Exception as e:
         return f"⚠️ Terjadi kesalahan saat mengambil informasi perangkat: {e}"
 
+# Fungsi untuk menangani perintah "info"
+async def handle_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    device_info = get_device_info()
+    await update.message.reply_text(device_info, parse_mode="Markdown")
+
 # Fungsi untuk menampilkan menu
 async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     menu_text = (
@@ -135,9 +140,6 @@ def main():
     application.add_handler(CommandHandler("info", lambda u, c: execute_with_menu(handle_info, u, c)))
     application.add_handler(CommandHandler("pesawat", lambda u, c: execute_with_menu(handle_airplane, u, c)))
     application.add_handler(CommandHandler("baterai", lambda u, c: execute_with_menu(handle_battery, u, c)))
-    application.add_handler(CommandHandler("monitor", lambda u, c: execute_with_menu(handle_monitor, u, c)))
-    application.add_handler(CommandHandler("reboot", lambda u, c: execute_with_menu(handle_reboot, u, c)))
-    application.add_handler(CommandHandler("clash", lambda u, c: execute_with_menu(handle_clash, u, c)))
     application.add_handler(CommandHandler("menu", handle_menu))
 
     # Jalankan bot
