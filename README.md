@@ -4,14 +4,19 @@
    - Pastikan Termux terinstal di perangkat Anda.
    - Perbarui paket dan repositori:
      ```bash
-     pkg update && pkg upgrade
+     pkg update && pkg upgrade -y
+     ```
+     ```bash
+     pkg install git sudo python -y
+     ```
+     ```bash
+     git clone https://github.com/RiSET-NET/BotMonitor.git
+     ```
+     ```bash
+     cd BotMonitor
      ```
 
-### 2. **Instalasi Python dan Pip**
-   - Instal Python (minimal versi 3.7):
-     ```bash
-     pkg install python
-     ```
+### 2. **Python dan Pip**
    - Verifikasi instalasi Python:
      ```bash
      python --version
@@ -31,25 +36,33 @@
 ### 4. **Instalasi `ADB` untuk Kontrol Perangkat Android**
    - Instal `ADB` (Android Debug Bridge):
      ```bash
-     pkg install android-tools
+     pkg install android-tools -y
      ```
    - Pastikan perangkat Android Anda dihubungkan ke Termux dengan mode debugging USB aktif.
 
 ### 5. **Instalasi `vnstat` untuk Pemantauan Bandwidth**
    - Instal `vnstat`:
      ```bash
-     pkg install vnstat
+     pkg install vnstat -y
      ```
    - Konfigurasi `vnstat` untuk interface jaringan (misalnya `wlan0`):
      ```bash
      vnstat --update --interface wlan0
      ```
 
-### 6. **Buat File `airplane.sh`**
-   - Pastikan file `airplane.sh` sudah dibuat dan berisi perintah untuk mengaktifkan dan menonaktifkan mode pesawat. Contoh sederhana:
+### 6. **Konfigurasi Auto On Bot**
+   -
      ```bash
-     echo -e '#!/bin/bash\nadb shell settings put global airplane_mode_on 1\nsleep 2\nadb shell settings put global airplane_mode_on 0' > airplane.sh
-     chmod +x airplane.sh
+     mkdir ~/.termux/boot
+     ```
+     ```bash
+     mv bot.sh ~/.termux/boot
+     ```
+     ```bash
+     chmod 777 ~/.termux/boot/bot.sh
+     ```
+     ```bash
+     chmod 777 bot.py airplane.sh
      ```
 
 ### 7. **Konfigurasi Token Bot Telegram**
@@ -59,10 +72,11 @@
      ```
    - Anda bisa mendapatkan token dari **BotFather** di Telegram dengan membuat bot baru.
 
+
 ### 8. **Menjalankan Script**
    - Jalankan script Python:
      ```bash
-     python bot.py
+     sudo python3 bot.py
      ```
    - Pastikan script berjalan tanpa error, dan bot mulai menerima perintah.
 
