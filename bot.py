@@ -47,14 +47,13 @@ async def handle_battery(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await update.message.reply_text(f"⚠️ Terjadi kesalahan saat mengambil status baterai: {e}")
 
 
-# Fungsi untuk memeriksa penggunaan data menggunakan vnstat
 def get_data_usage():
     try:
-        # Jalankan perintah vnstat dengan format JSON
-        result = subprocess.run(['vnstat', '--json'], stdout=subprocess.PIPE, text=True)
+        # Jalankan perintah vnstat dengan interface wlan0 dan format JSON
+        result = subprocess.run(['vnstat', '--json', '-i', 'wlan0'], stdout=subprocess.PIPE, text=True)
         data = json.loads(result.stdout)
 
-        # Ambil informasi dari interface pertama
+        # Ambil informasi dari interface wlan0
         interface = data['interfaces'][0]
         traffic = interface['traffic']
 
@@ -79,6 +78,15 @@ def get_data_usage():
             for day in daily_history
         ]
 
+        # Riwayat data bulanan
+        monthly_history = traffic['month']
+        monthly_history_formatted = [
+            f"Bulan: {month['date']['year']}-{month['date']['month']:02d}, "
+            f"⬇️ Download: {format_size(month['rx'])}, ⬆️ Upload: {format_size(month['tx'])}, "
+            f"🔄 Total: {format_size(month['rx'] + month['tx'])}"
+            for month in monthly_history
+        ]
+
         # Format hasil untuk ditampilkan
         result_text = (
             "📊 *Penggunaan Data (vnstat):*\n\n"
@@ -90,7 +98,8 @@ def get_data_usage():
             f"⬇️ *Download*: `{format_size(month_download)}`\n"
             f"⬆️ *Upload*: `{format_size(month_upload)}`\n"
             f"🔄 *Total*: `{format_size(month_total)}`\n\n"
-            f"📖 *Riwayat Harian:*\n" + "\n".join(daily_history_formatted)
+            f"📖 *Riwayat Harian:*\n" + "\n".join(daily_history_formatted) + "\n\n"
+            f"📅 *Riwayat Bulanan:*\n" + "\n".join(monthly_history_formatted)
         )
         return result_text
     except Exception as e:
