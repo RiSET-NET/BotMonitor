@@ -1,6 +1,7 @@
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 import subprocess
+import json
 import asyncio
 import re
 
@@ -47,28 +48,52 @@ async def handle_battery(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 # Fungsi untuk memeriksa penggunaan data menggunakan vnstat
 def get_data_usage():
     try:
-        # Jalankan perintah vnstat untuk mendapatkan statistik
-        result = subprocess.run(['vnstat', '--oneline'], stdout=subprocess.PIPE, text=True)
-        raw_info = result.stdout.strip()
-        
-        # Format oneline dari vnstat: <interface>;rx;tx;total;...
-        data = raw_info.split(';')
-        if len(data) < 4:
-            return "❌ Tidak dapat membaca data dari vnstat."
+        # Jalankan perintah vnstat dengan format JSON
+        result = subprocess.run(['vnstat', '--json'], stdout=subprocess.PIPE, text=True)
+        data = json.loads(result.stdout)
 
-        # Ekstrak upload (tx), download (rx), dan total
-        download = data[1].strip()
-        upload = data[2].strip()
-        total = data[3].strip()
+        # Ambil informasi dari interface pertama
+        interface = data['interfaces'][0]
+        traffic = interface['traffic']
 
-        return (
-            f"📊 *Penggunaan Data (vnstat):*\n\n"
-            f"⬆️ *Upload*: `{upload}`\n"
-            f"⬇️ *Download*: `{download}`\n"
-            f"🔄 *Total*: `{total}`"
+        # Data untuk hari ini
+        today = traffic['day'][-1]  # Data hari terakhir
+        today_download = today['rx']  # Download dalam byte
+        today_upload = today['tx']    # Upload dalam byte
+        today_total = today_download + today_upload
+
+        # Data untuk bulan ini
+        current_month = traffic['month'][-1]
+        month_download = current_month['rx']  # Download dalam byte
+        month_upload = current_month['tx']    # Upload dalam byte
+        month_total = month_download + month_upload
+
+        # Riwayat data harian
+        daily_history = traffic['day']
+        daily_history_formatted = [
+            f"Tanggal: {day['date']['year']}-{day['date']['month']:02d}-{day['date']['day']:02d}, "
+            f"⬇️ Download: {format_size(day['rx'])}, ⬆️ Upload: {format_size(day['tx'])}, "
+            f"🔄 Total: {format_size(day['rx'] + day['tx'])}"
+            for day in daily_history
+        ]
+
+        # Format hasil untuk ditampilkan
+        result_text = (
+            "📊 *Penggunaan Data (vnstat):*\n\n"
+            f"📅 *Hari Ini:*\n"
+            f"⬇️ *Download*: `{format_size(today_download)}`\n"
+            f"⬆️ *Upload*: `{format_size(today_upload)}`\n"
+            f"🔄 *Total*: `{format_size(today_total)}`\n\n"
+            f"🗓️ *Bulan Ini:*\n"
+            f"⬇️ *Download*: `{format_size(month_download)}`\n"
+            f"⬆️ *Upload*: `{format_size(month_upload)}`\n"
+            f"🔄 *Total*: `{format_size(month_total)}`\n\n"
+            f"📖 *Riwayat Harian:*\n" + "\n".join(daily_history_formatted)
         )
+        return result_text
     except Exception as e:
         return f"⚠️ Terjadi kesalahan saat mengambil informasi penggunaan data dengan vnstat: {e}"
+
 
 # Fungsi untuk menangani perintah "monitor"
 async def handle_monitor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
