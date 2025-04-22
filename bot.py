@@ -4,6 +4,7 @@ import subprocess
 import json
 import asyncio
 import re
+import socket
 
 # Fungsi untuk mengonversi byte ke format KB, MB, atau GB secara dinamis
 def format_size(bytes):
@@ -164,16 +165,19 @@ def get_device_info():
             return "❌ Tidak ada perangkat yang terhubung melalui ADB."
         result = subprocess.run(['adb', 'shell', 'getprop'], stdout=subprocess.PIPE, text=True)
         raw_info = result.stdout.strip()
+        
+        # Urutkan sesuai keinginan Anda
         important_keys = {
-            "persist.sys.timezone": "TimeZone",
             "ro.product.model": "Model",
             "ro.product.brand": "Brand",
             "ro.build.version.release": "Android Version",
             "ro.serialno": "Serial Number",
             "ro.product.board": "Cpu Model",
             "dalvik.vm.isa.arm.variant": "Processors",
+            "persist.sys.timezone": "TimeZone",
             "ro.alpha.build.version": "Rom",
         }
+        
         info = {}
         for line in raw_info.splitlines():
             if line.startswith("[") and "]: [" in line:
@@ -184,6 +188,8 @@ def get_device_info():
 
         if not info:
             return "❌ Tidak ada informasi penting yang ditemukan pada perangkat."
+        
+        # Format output berdasarkan urutan yang diinginkan
         formatted_info = "\n".join([f"🔹 *{key}*: `{value}`" for key, value in info.items()])
         return f"📱 *Informasi Perangkat Anda:*\n\n{formatted_info}"
     except Exception as e:
@@ -193,6 +199,50 @@ def get_device_info():
 async def handle_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     device_info = get_device_info()
     await update.message.reply_text(device_info, parse_mode="Markdown")
+
+# Fungsi untuk mendapatkan IP dari interface wlan0
+def get_ip_wlan0():
+    try:
+        result = subprocess.run(['adb', 'shell', 'ip', 'addr', 'show', 'wlan0'], stdout=subprocess.PIPE, text=True)
+        raw_info = result.stdout.strip()
+        for line in raw_info.splitlines():
+            if "inet " in line:
+                ip_address = line.split()[1].split('/')[0]
+                return ip_address
+        return None
+    except Exception as e:
+        return None
+
+# Fungsi untuk menangani perintah clash
+async def handle_clash(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    try:
+        ip_address = get_ip_wlan0()
+        if not ip_address:
+            await update.message.reply_text("❌ Tidak dapat menemukan IP untuk interface wlan0.")
+            return
+        
+        metacube_link = f"http://{ip_address}:9090/ui"
+        zashboard_link = f"http://{ip_address}/zashboard"
+        
+        response = (
+            f"🌐 *Clash Links:*\n\n"
+            f"🔗 *MetaCubeXD*: [Klik di sini]({metacube_link})\n"
+            f"🔗 *Zashboard*: [Klik di sini]({zashboard_link})"
+        )
+        await update.message.reply_text(response, parse_mode="Markdown")
+    except Exception as e:
+        await update.message.reply_text(f"⚠️ Terjadi kesalahan: {e}")
+
+# Fungsi untuk menangani perintah "reboot"
+async def handle_reboot(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    try:
+        result = subprocess.run(['adb', 'reboot'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        if result.returncode == 0:
+            await update.message.reply_text("♻️ Perangkat sedang di-reboot...", parse_mode="Markdown")
+        else:
+            await update.message.reply_text(f"⚠️ Gagal melakukan reboot: {result.stderr}", parse_mode="Markdown")
+    except Exception as e:
+        await update.message.reply_text(f"⚠️ Terjadi kesalahan saat mencoba reboot perangkat: {e}", parse_mode="Markdown")
 
 # Fungsi untuk menampilkan menu
 async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -231,10 +281,12 @@ def main():
     # Tambahkan handler untuk setiap perintah dengan wrapper
     application.add_handler(CommandHandler("start", lambda u, c: execute_with_menu(start, u, c)))
     application.add_handler(CommandHandler("operator", lambda u, c: execute_with_menu(handle_operator, u, c)))
+    application.add_handler(CommandHandler("clash", lambda u, c: execute_with_menu(handle_clash, u, c)))
     application.add_handler(CommandHandler("info", lambda u, c: execute_with_menu(handle_info, u, c)))
     application.add_handler(CommandHandler("pesawat", lambda u, c: execute_with_menu(handle_airplane, u, c)))
     application.add_handler(CommandHandler("baterai", lambda u, c: execute_with_menu(handle_battery, u, c)))
     application.add_handler(CommandHandler("monitor", lambda u, c: execute_with_menu(handle_monitor, u, c)))
+    application.add_handler(CommandHandler("reboot", lambda u, c: execute_with_menu(handle_reboot, u, c)))
     application.add_handler(CommandHandler("menu", handle_menu))
 
     # Jalankan bot
