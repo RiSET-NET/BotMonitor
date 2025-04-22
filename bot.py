@@ -44,27 +44,31 @@ async def handle_battery(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await update.message.reply_text(f"⚠️ Terjadi kesalahan saat mengambil status baterai: {e}")
 
 
-# Fungsi untuk memeriksa penggunaan data
+# Fungsi untuk memeriksa penggunaan data menggunakan vnstat
 def get_data_usage():
     try:
-        result = subprocess.run(['adb', 'shell', 'dumpsys', 'netstats'], stdout=subprocess.PIPE, text=True)
+        # Jalankan perintah vnstat untuk mendapatkan statistik
+        result = subprocess.run(['vnstat', '--oneline'], stdout=subprocess.PIPE, text=True)
         raw_info = result.stdout.strip()
-        match_upload = re.search(r"txBytes=(\d+)", raw_info)
-        match_download = re.search(r"rxBytes=(\d+)", raw_info)
-        upload = int(match_upload.group(1)) if match_upload else 0
-        download = int(match_download.group(1)) if match_download else 0
-        total = upload + download
-        formatted_upload = format_size(upload)
-        formatted_download = format_size(download)
-        formatted_total = format_size(total)
+        
+        # Format oneline dari vnstat: <interface>;rx;tx;total;...
+        data = raw_info.split(';')
+        if len(data) < 4:
+            return "❌ Tidak dapat membaca data dari vnstat."
+
+        # Ekstrak upload (tx), download (rx), dan total
+        download = data[1].strip()
+        upload = data[2].strip()
+        total = data[3].strip()
+
         return (
-            f"📊 *Penggunaan Data:*\n\n"
-            f"⬆️ *Upload*: `{formatted_upload}`\n"
-            f"⬇️ *Download*: `{formatted_download}`\n"
-            f"🔄 *Total*: `{formatted_total}`"
+            f"📊 *Penggunaan Data (vnstat):*\n\n"
+            f"⬆️ *Upload*: `{upload}`\n"
+            f"⬇️ *Download*: `{download}`\n"
+            f"🔄 *Total*: `{total}`"
         )
     except Exception as e:
-        return f"⚠️ Terjadi kesalahan saat mengambil informasi penggunaan data: {e}"
+        return f"⚠️ Terjadi kesalahan saat mengambil informasi penggunaan data dengan vnstat: {e}"
 
 # Fungsi untuk menangani perintah "monitor"
 async def handle_monitor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
