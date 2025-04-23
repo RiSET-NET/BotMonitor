@@ -39,8 +39,10 @@
 
 ### **Catatan Penting**
 - **ADB** membutuhkan perangkat Android dengan debugging USB aktif. Aktifkan di perangkat Anda melalui opsi pengembang.
-- **vnstat** hanya berfungsi jika interface jaringan perangkat Anda kompatibel.
+- **MONITOR** hanya berfungsi jika interface jaringan perangkat Anda kompatibel.
 - Pastikan perangkat memiliki koneksi internet untuk menjalankan **speedtest** dan bot Telegram.
 - Jika menggunakan script ini untuk pertama kali, pastikan Anda memahami izin dan akses yang digunakan oleh `ADB` untuk mengontrol perangkat.
 
 Jika ada kendala dalam instalasi atau eksekusi, beri tahu saya untuk bantuan lebih lanjut!
+
+https://t.me/RiSET_NET
