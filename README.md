@@ -5,7 +5,7 @@
 
 ### **Di uji dengan Device Xiaomi Redmi 4X Rom AlphaDroid A13**
 
-### ***Mungkin ada beberapa Fungsi yang tidak berjalan bila digunakan di Device dan Rom yang berbeda**
+### ***Mungkin ada beberapa Fungsi yang tidak berjalan bila digunakan di Device dan Rom yang berbeda***
 <div align="center">
   <a href="https://ibb.co.com/PsDMhgtb"><img src="https://i.ibb.co.com/20ZStd5L/IMG-1176.jpg" alt="IMG-1176" border="0" /></a>
 </div>
