@@ -1,389 +1,128 @@
+import json
+import subprocess
+import time
+import speedtest
+import vnstat
+import platform
+from datetime import timedelta
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
-from telegram.helpers import escape_markdown
-import subprocess
-import json
-import asyncio
-import re
-import socket
-import speedtest
-import psutil
-import time
+from threading import Thread
 
-# Fungsi untuk mengonversi byte ke format KB, MB, atau GB secara dinamis
-def format_size(bytes):
-    if bytes < 1024:
-        return f"{bytes} B"
-    elif bytes < 1024 ** 2:
-        return f"{bytes / 1024:.2f} KB"
-    elif bytes < 1024 ** 3:
-        return f"{bytes / (1024 ** 2):.2f} MB"
-    else:
-        return f"{bytes / (1024 ** 3):.2f} GB"
+# Load config
+with open("config.json") as f:
+    config = json.load(f)
 
-# Fungsi untuk memeriksa status baterai
-async def handle_battery(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+BOT_TOKEN = config["BOT_TOKEN"]
+AUTHORIZED_USERS = config["AUTHORIZED_USERS"]
+
+# Utility
+def run_adb(command: str) -> str:
     try:
-        result = subprocess.run(['adb', 'shell', 'dumpsys', 'battery'], stdout=subprocess.PIPE, text=True)
-        raw_info = result.stdout.strip()
-        important_keys = {
-            "level": "Battery Level",
-            "status": "Status",
-            "health": "Health",
-            "temperature": "Temperature",
-        }
-        battery_info = {}
-        for line in raw_info.splitlines():
-            for key, label in important_keys.items():
-                if key in line.lower():
-                    value = line.split(":")[-1].strip()
-                    if key == "temperature":
-                        value = f"{int(value) / 10:.1f}°C"
-                    battery_info[label] = value
-
-        if not battery_info:
-            await update.message.reply_text("❌ Tidak ada informasi baterai yang ditemukan.")
-        else:
-            formatted_info = "\n".join([f"🔋 *{key}*: `{value}`" for key, value in battery_info.items()])
-            await update.message.reply_text(f"🔋 *Status Baterai:*\n\n{formatted_info}", parse_mode="Markdown")
-    except Exception as e:
-        await update.message.reply_text(f"⚠️ Terjadi kesalahan saat mengambil status baterai: {e}")
-
-
-def get_data_usage():
-    try:
-        # Jalankan perintah vnstat dengan interface wlan0 dan format JSON
-        result = subprocess.run(['vnstat', '--json', '-i', 'wlan0'], stdout=subprocess.PIPE, text=True)
-        data = json.loads(result.stdout)
-
-        # Ambil informasi dari interface wlan0
-        interface = data['interfaces'][0]
-        traffic = interface['traffic']
-
-        # Data untuk hari ini
-        today = traffic['day'][-1]  # Data hari terakhir
-        today_download = today['rx']  # Download dalam byte
-        today_upload = today['tx']    # Upload dalam byte
-        today_total = today_download + today_upload
-
-        # Data untuk bulan ini
-        current_month = traffic['month'][-1]
-        month_download = current_month['rx']  # Download dalam byte
-        month_upload = current_month['tx']    # Upload dalam byte
-        month_total = month_download + month_upload
-
-        # Riwayat data harian
-        daily_history = traffic['day']
-        daily_history_formatted = [
-            f"Tanggal: {day['date']['year']}-{day['date']['month']:02d}-{day['date']['day']:02d}, "
-            f"⬇️ Download: {format_size(day['rx'])}, ⬆️ Upload: {format_size(day['tx'])}, "
-            f"🔄 Total: {format_size(day['rx'] + day['tx'])}"
-            for day in daily_history
-        ]
-
-        # Riwayat data bulanan
-        monthly_history = traffic['month']
-        monthly_history_formatted = [
-            f"Bulan: {month['date']['year']}-{month['date']['month']:02d}, "
-            f"⬇️ Download: {format_size(month['rx'])}, ⬆️ Upload: {format_size(month['tx'])}, "
-            f"🔄 Total: {format_size(month['rx'] + month['tx'])}"
-            for month in monthly_history
-        ]
-
-        # Format hasil untuk ditampilkan
-        result_text = (
-            "📊 *Penggunaan Data (vnstat):*\n\n"
-            f"📅 *Hari Ini:*\n"
-            f"⬇️ *Download*: `{format_size(today_download)}`\n"
-            f"⬆️ *Upload*: `{format_size(today_upload)}`\n"
-            f"🔄 *Total*: `{format_size(today_total)}`\n\n"
-            f"🗓️ *Bulan Ini:*\n"
-            f"⬇️ *Download*: `{format_size(month_download)}`\n"
-            f"⬆️ *Upload*: `{format_size(month_upload)}`\n"
-            f"🔄 *Total*: `{format_size(month_total)}`\n\n"
-            f"📖 *Riwayat Harian:*\n" + "\n".join(daily_history_formatted) + "\n\n"
-            f"📅 *Riwayat Bulanan:*\n" + "\n".join(monthly_history_formatted)
-        )
-        return result_text
-    except Exception as e:
-        return f"⚠️ Terjadi kesalahan saat mengambil informasi penggunaan data dengan vnstat: {e}"
-
-
-# Fungsi untuk menangani perintah "monitor"
-async def handle_monitor(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    data_usage = get_data_usage()
-    await update.message.reply_text(data_usage, parse_mode="Markdown")
-    
-# Fungsi untuk menangani perintah "speedtest"
-async def handle_speedtest(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    try:
-        st = speedtest.Speedtest()
-        st.get_best_server()
-        download_speed = st.download() / 1_000_000  # Convert to Mbps
-        upload_speed = st.upload() / 1_000_000  # Convert to Mbps
-        await update.message.reply_text(
-            f"📶 *Hasil Speedtest:*\n\n"
-            f"⬇️ *Download*: `{download_speed:.2f} Mbps`\n"
-            f"⬆️ *Upload*: `{upload_speed:.2f} Mbps`",
-            parse_mode="Markdown"
-        )
-    except Exception as e:
-        await update.message.reply_text(f"⚠️ Terjadi kesalahan saat melakukan speedtest: {e}")
-        
-# Fungsi untuk menangani perintah "ping"
-async def handle_ping(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    try:
-        target = "8.8.8.8"  # Google DNS
-        result = subprocess.run(['ping', '-c', '4', target], stdout=subprocess.PIPE, text=True)
-        await update.message.reply_text(f"🌐 *Hasil Ping ke {target}:*\n\n```\n{result.stdout}\n```", parse_mode="Markdown")
-    except Exception as e:
-        await update.message.reply_text(f"⚠️ Terjadi kesalahan saat melakukan ping: {e}")        
-        
-# Fungsi untuk mendapatkan informasi perangkat yang terhubung ke hotspot
-def get_hotspot_info():
-    try:
-        result = subprocess.run(['adb', 'shell', 'ip', 'neigh'], stdout=subprocess.PIPE, text=True)
-        raw_info = result.stdout.strip()
-        connected_devices = []
-
-        # Parsing informasi perangkat yang terhubung
-        for line in raw_info.splitlines():
-            if "REACHABLE" in line:
-                parts = line.split()
-                ip_address = parts[0]
-                mac_address = parts[4]
-                connected_devices.append(f"IP: `{ip_address}`, MAC: `{mac_address}`")
-
-        if not connected_devices:
-            return "❌ Tidak ada perangkat yang terhubung ke hotspot."
-        return "📡 *Perangkat yang Terhubung ke Hotspot:*\n\n" + "\n".join(connected_devices)
-    except Exception as e:
-        return f"⚠️ Terjadi kesalahan saat mengambil informasi perangkat yang terhubung ke hotspot: {e}"
-
-# Fungsi untuk memeriksa informasi 4G dan operator
-def get_operator_info():
-    try:
-        result = subprocess.run(['adb', 'shell', 'getprop'], stdout=subprocess.PIPE, text=True)
-        raw_info = result.stdout.strip()
-        important_keys = {
-            "gsm.sim.operator.alpha": "SIM",
-            "gsm.operator.alpha": "Operator",
-            "gsm.network.type": "Network Type",
-            "gsm.operator.iso-country": "Country",
-            "gsm.sim.operator.imsi": "IMSI",
-            "gsm.sim.operator.numeric": "Operator Code",
-        }
-        operator_info = {}
-        for line in raw_info.splitlines():
-            if line.startswith("[") and "]: [" in line:
-                key, value = line[1:].split("]: [", 1)
-                value = value[:-1]
-                if key in important_keys:
-                    operator_info[important_keys[key]] = value
-
-        if not operator_info:
-            return "❌ Tidak ada informasi operator yang ditemukan."
-        formatted_info = "\n".join([f"📡 *{key}*: `{value}`" for key, value in operator_info.items()])
-        return f"📡 *Informasi Jaringan dan Operator:*\n\n{formatted_info}"
-    except Exception as e:
-        return f"⚠️ Terjadi kesalahan saat mengambil informasi operator: {e}"
-
-# Fungsi untuk menangani perintah "operator"
-async def handle_operator(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    operator_info = get_operator_info()
-    hotspot_info = get_hotspot_info()
-    await update.message.reply_text(f"{operator_info}\n\n{hotspot_info}", parse_mode="Markdown")
-    
-# Fungsi untuk menangani perintah "load"
-async def handle_load(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    try:
-        # Informasi penggunaan RAM
-        mem = psutil.virtual_memory()
-        total_ram = mem.total
-        used_ram = mem.used
-        available_ram = mem.available
-
-        # Lama perangkat menyala (uptime)
-        uptime_seconds = time.time() - psutil.boot_time()
-        uptime_formatted = time.strftime("%H:%M:%S", time.gmtime(uptime_seconds))
-
-        await update.message.reply_text(
-            f"🖥️ *Informasi Sistem:*\n\n"
-            f"💾 *RAM Total*: `{format_size(total_ram)}`\n"
-            f"📈 *RAM Terpakai*: `{format_size(used_ram)}`\n"
-            f"📉 *RAM Tersedia*: `{format_size(available_ram)}`\n"
-            f"⏳ *Lama Menyala*: `{uptime_formatted}`",
-            parse_mode="Markdown"
-        )
-    except Exception as e:
-        await update.message.reply_text(f"⚠️ Terjadi kesalahan saat mengambil informasi sistem: {e}")    
-    
-# Fungsi untuk mendapatkan informasi perangkat
-def get_device_info():
-    try:
-        result = subprocess.run(['adb', 'devices'], stdout=subprocess.PIPE, text=True)
-        devices = result.stdout.strip()
-        if "device" not in devices:
-            return "❌ Tidak ada perangkat yang terhubung melalui ADB."
-        result = subprocess.run(['adb', 'shell', 'getprop'], stdout=subprocess.PIPE, text=True)
-        raw_info = result.stdout.strip()
-        
-        # Urutkan sesuai keinginan Anda
-        important_keys = {
-            "ro.product.model": "Model",
-            "ro.product.brand": "Brand",
-            "ro.build.version.release": "Android Version",
-            "ro.serialno": "Serial Number",
-            "ro.product.board": "Cpu Model",
-            "dalvik.vm.isa.arm.variant": "Processors",
-            "persist.sys.timezone": "TimeZone",
-            "ro.alpha.build.version": "Rom",
-        }
-        
-        info = {}
-        for line in raw_info.splitlines():
-            if line.startswith("[") and "]: [" in line:
-                key, value = line[1:].split("]: [", 1)
-                value = value[:-1]
-                if key in important_keys:
-                    info[important_keys[key]] = value
-
-        if not info:
-            return "❌ Tidak ada informasi penting yang ditemukan pada perangkat."
-        
-        # Format output berdasarkan urutan yang diinginkan
-        formatted_info = "\n".join([f"🔹 *{key}*: `{value}`" for key, value in info.items()])
-        return f"📱 *Informasi Perangkat Anda:*\n\n{formatted_info}"
-    except Exception as e:
-        return f"⚠️ Terjadi kesalahan saat mengambil informasi perangkat: {e}"
-
-# Fungsi untuk menangani perintah "info"
-async def handle_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    device_info = get_device_info()
-    await update.message.reply_text(device_info, parse_mode="Markdown")
-
-# Fungsi untuk mendapatkan IP dari interface wlan0
-def get_ip_wlan0():
-    try:
-        result = subprocess.run(['adb', 'shell', 'ip', 'addr', 'show', 'wlan0'], stdout=subprocess.PIPE, text=True)
-        raw_info = result.stdout.strip()
-        for line in raw_info.splitlines():
-            if "inet " in line:
-                ip_address = line.split()[1].split('/')[0]
-                return ip_address
-        return None
-    except Exception as e:
-        return None
-
-# Fungsi untuk menangani perintah clash
-async def handle_clash(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    try:
-        ip_address = get_ip_wlan0()
-        if not ip_address:
-            await update.message.reply_text("❌ Tidak dapat menemukan IP untuk interface wlan0.")
-            return
-        
-        metacube_link = f"http://{ip_address}:9090/ui"
-        zashboard_link = f"http://{ip_address}/zashboard"
-        
-        response = (
-            f"🌐 *Clash Links:*\n\n"
-            f"🔗 *MetaCubeXD*: [Klik di sini]({metacube_link})\n"
-            f"🔗 *Zashboard*: [Klik di sini]({zashboard_link})"
-        )
-        await update.message.reply_text(response, parse_mode="Markdown")
-    except Exception as e:
-        await update.message.reply_text(f"⚠️ Terjadi kesalahan: {e}")
-
-# Fungsi untuk menangani perintah "reboot"
-async def handle_reboot(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    try:
-        result = subprocess.run(['adb', 'reboot'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        if result.returncode == 0:
-            await update.message.reply_text("♻️ Perangkat sedang di-reboot...", parse_mode="Markdown")
-        else:
-            await update.message.reply_text(f"⚠️ Gagal melakukan reboot: {result.stderr}", parse_mode="Markdown")
-    except Exception as e:
-        await update.message.reply_text(f"⚠️ Terjadi kesalahan saat mencoba reboot perangkat: {e}", parse_mode="Markdown")
-
-# Fungsi untuk menampilkan menu
-async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    menu_text = (
-        "📜 *Perintah ADB-BOT:*\n\n"
-        "📱 */info*: Informasi perangkat.\n"
-        "📡 */operator*: Informasi Operator.\n"
-        "✈️ */pesawat*: Airplane Auto.\n"
-        "🔋 */baterai*: Status baterai perangkat.\n"
-        "📊 */monitor*: bandwidth Vnstat.\n"
-        "♻️ */reboot*: Me-reboot perangkat.\n"
-        "🌐 */clash*: MetaCubeXD dan Zashboard.\n"
-        "📶 */speedtest*: Melakukan tes kecepatan internet.\n"
-        "🌐 */ping*: Melakukan ping ke Google DNS.\n"
-        "🖥️ */load*: Informasi RAM dan lama perangkat menyala.\n"
-    )
-    await update.message.reply_text(menu_text, parse_mode="Markdown")
-
-# Fungsi untuk menangani perintah "pesawat"
-async def handle_airplane(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    try:
-        # Jalankan konfigurasi tambahan sebelum mengaktifkan mode pesawat
-        subprocess.run(['adb', 'shell', 'settings', 'put', 'global', 'airplane_mode_radios', 'cell,nfc,wimax'], check=True)
-        subprocess.run(['adb', 'shell', 'content', 'update', '--uri', 'content://settings/global', '--bind', "value:s:'cell,nfc,wimax'", '--where', "name='airplane_mode_radios'"], check=True)
-
-        # Jalankan file bash untuk mengaktifkan dan menonaktifkan mode pesawat
-        result = subprocess.run(['bash', 'airplane.sh'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        
-        if result.returncode == 0:
-            await update.message.reply_text("✈️ Mode pesawat telah diaktifkan dan dinonaktifkan kembali dalam 2 detik.", parse_mode="MarkdownV2")
-        else:
-            await update.message.reply_text(
-                f"⚠️ Gagal menjalankan perintah pesawat: {escape_markdown(result.stderr, version=2)}",
-                parse_mode="MarkdownV2"
-            )
+        output = subprocess.check_output(["adb", "shell"] + command.split(), stderr=subprocess.STDOUT)
+        return output.decode("utf-8").strip()
     except subprocess.CalledProcessError as e:
-        await update.message.reply_text(
-            f"⚠️ Terjadi kesalahan saat menjalankan perintah pesawat: {escape_markdown(str(e), version=2)}",
-            parse_mode="MarkdownV2"
+        return f"Error: {e.output.decode()}"
+
+def authorized(func):
+    async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if update.effective_user.id not in AUTHORIZED_USERS:
+            await update.message.reply_text("🚫 Tidak diizinkan.")
+            return
+        await func(update, context)
+    return wrapper
+
+# Commands
+@authorized
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("🤖 Bot ADB Telegram Siap!")
+
+@authorized
+async def battery(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    output = run_adb("dumpsys battery")
+    await update.message.reply_text(f"🔋 Info Baterai:\n{output}")
+
+@authorized
+async def ping(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("📡 Ping Google...")
+    result = run_adb("ping -c 4 8.8.8.8")
+    await update.message.reply_text(f"🌐 Hasil Ping:\n{result}")
+
+@authorized
+async def speed_test(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("🚀 Menguji kecepatan internet...")
+    
+    def test_speed():
+        try:
+            st = speedtest.Speedtest()
+            st.download()
+            st.upload()
+            res = st.results.dict()
+            message = (
+                f"🌍 ISP: {res['client']['isp']}\n"
+                f"📶 Download: {res['download'] / 1_000_000:.2f} Mbps\n"
+                f"📤 Upload: {res['upload'] / 1_000_000:.2f} Mbps\n"
+                f"📍 Server: {res['server']['name']} ({res['server']['country']})\n"
+                f"⏱️ Ping: {res['ping']} ms"
+            )
+        except Exception as e:
+            message = f"❌ Speedtest gagal: {e}"
+        app.create_task(update.message.reply_text(message))
+
+    Thread(target=test_speed).start()
+
+@authorized
+async def data_usage(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        data = vnstat.interface("wlan0").last_24_hours()
+        usage = (
+            f"📊 Penggunaan Data (wlan0):\n"
+            f"⬇️ Download: {data.rx:.2f} MB\n"
+            f"⬆️ Upload: {data.tx:.2f} MB\n"
+            f"🔄 Total: {data.total:.2f} MB"
         )
     except Exception as e:
-        await update.message.reply_text(
-            f"⚠️ Terjadi kesalahan umum: {escape_markdown(str(e), version=2)}",
-            parse_mode="MarkdownV2"
-        )
+        usage = f"❌ Gagal ambil data vnstat: {e}"
+    await update.message.reply_text(usage)
 
-# Wrapper untuk menampilkan menu setelah setiap perintah
-async def execute_with_menu(command_function, update, context):
-    await command_function(update, context)
-    await handle_menu(update, context)
+@authorized
+async def device_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    props = run_adb("getprop")
+    info = "\n".join([
+        f"🧠 CPU: {run_adb('cat /proc/cpuinfo | grep Hardware')}",
+        f"📱 Model: {run_adb('getprop ro.product.model')}",
+        f"📟 Brand: {run_adb('getprop ro.product.brand')}",
+        f"📦 Versi: {run_adb('getprop ro.build.version.release')}",
+        f"🔧 API: {run_adb('getprop ro.build.version.sdk')}",
+        f"🆔 Build: {run_adb('getprop ro.build.display.id')}",
+    ])
+    await update.message.reply_text(info)
 
-# Fungsi untuk memulai bot
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text("🤖 Bot sudah berjalan! Kirim *menu* untuk melihat daftar perintah.", parse_mode="Markdown")
+@authorized
+async def ram(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    mem = run_adb("cat /proc/meminfo | grep MemAvailable")
+    await update.message.reply_text(f"💾 RAM Tersedia:\n{mem}")
 
-# Fungsi utama
-def main():
-    # Token bot Telegram Anda
-    TOKEN = "7894823712:AAH1ScVaEgfYSV_hOl6ejLFuKhi4gKem0vs"
+@authorized
+async def uptime(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    seconds = float(run_adb("cat /proc/uptime").split()[0])
+    uptime_str = str(timedelta(seconds=int(seconds)))
+    await update.message.reply_text(f"⏱️ Uptime: {uptime_str}")
 
-    application = Application.builder().token(TOKEN).build()
+# Setup
+app = Application.builder().token(BOT_TOKEN).build()
 
-    # Tambahkan handler untuk setiap perintah dengan wrapper
-    application.add_handler(CommandHandler("start", lambda u, c: execute_with_menu(start, u, c)))
-    application.add_handler(CommandHandler("speedtest", lambda u, c: execute_with_menu(handle_speedtest, u, c)))
-    application.add_handler(CommandHandler("ping", lambda u, c: execute_with_menu(handle_ping, u, c)))
-    application.add_handler(CommandHandler("load", lambda u, c: execute_with_menu(handle_load, u, c)))
-    application.add_handler(CommandHandler("operator", lambda u, c: execute_with_menu(handle_operator, u, c)))
-    application.add_handler(CommandHandler("clash", lambda u, c: execute_with_menu(handle_clash, u, c)))
-    application.add_handler(CommandHandler("info", lambda u, c: execute_with_menu(handle_info, u, c)))
-    application.add_handler(CommandHandler("pesawat", lambda u, c: execute_with_menu(handle_airplane, u, c)))
-    application.add_handler(CommandHandler("baterai", lambda u, c: execute_with_menu(handle_battery, u, c)))
-    application.add_handler(CommandHandler("monitor", lambda u, c: execute_with_menu(handle_monitor, u, c)))
-    application.add_handler(CommandHandler("reboot", lambda u, c: execute_with_menu(handle_reboot, u, c)))
-    application.add_handler(CommandHandler("menu", handle_menu))
+# Register
+app.add_handler(CommandHandler("start", start))
+app.add_handler(CommandHandler("battery", battery))
+app.add_handler(CommandHandler("ping", ping))
+app.add_handler(CommandHandler("speedtest", speed_test))
+app.add_handler(CommandHandler("data", data_usage))
+app.add_handler(CommandHandler("info", device_info))
+app.add_handler(CommandHandler("ram", ram))
+app.add_handler(CommandHandler("uptime", uptime))
 
-    # Jalankan bot
-    print("🤖 Bot sedang berjalan...")
-    application.run_polling()
-
-if __name__ == '__main__':
-    main()
+# Run bot
+if __name__ == "__main__":
+    print("🚀 Bot Telegram ADB dijalankan...")
+    app.run_polling()
