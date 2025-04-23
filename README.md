@@ -45,4 +45,7 @@
 
 Jika ada kendala dalam instalasi atau eksekusi, beri tahu saya untuk bantuan lebih lanjut!
 
-https://t.me/RiSET_NET
+![Telegram](https://cdn.rawgit.com/sindresorhus/awesome/d7305f38d29fed78fa85652e3a63e154dd8e8829/media/badge.svg)](https://t.me/RiSET_NET)
+[![Github](https://img.shields.io/:chat-on_gitter-ED2067.svg)](https://github.com/RiSET-NET/)
+[![Country](https://img.shields.io/badge/country-indonesia-blue.svg)](#)
+
