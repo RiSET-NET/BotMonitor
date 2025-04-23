@@ -23,7 +23,7 @@
 ### 2. **Konfigurasi Token Bot Telegram**
    - Ganti token bot Telegram di script "config.json" pada bagian ini:
      ```json
-     TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"
+     TOKEN = "MASUKAN_TOKEN_DISINI"
      ```
    - Anda bisa mendapatkan token dari **BotFather** di Telegram dengan membuat bot baru.
 
