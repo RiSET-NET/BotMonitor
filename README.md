@@ -23,11 +23,10 @@
 
 ## 📦 Dokumentasi Instalasi & Pemakaian
 
--Termux dan Termux:Boot terbaru
--Koneksi internet aktif
--Token Bot Telegram dan Channel ID
--Optional: Akses root (untuk menjalankan via sudo, bisa diubah kalau tanpa root)
-
+- Termux dan Termux:Boot terbaru
+- Koneksi internet aktif
+- Token Bot Telegram dan Channel ID
+- Optional: Akses root (untuk menjalankan via sudo, bisa diubah kalau tanpa root)
 ---
 ## 🚀 Instalasi
 
