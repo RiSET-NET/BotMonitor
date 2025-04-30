@@ -1,7 +1,6 @@
 # 🛰️ R4X Monitoring Bot
 
 ![Platform](https://img.shields.io/badge/platform-Termux-blue?logo=termux)
-![Language](https://img.shields.io/badge/python-3.9%2B-yellow?logo=python)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 🔔 Telegram bot pemantau koneksi internet berbasis Termux. Bot ini akan mengirim pesan ke Telegram saat koneksi internet kembali, serta mendeteksi perubahan ISP dan lokasi IP publik secara otomatis.
@@ -33,7 +32,7 @@
 pkg update && pkg install curl -y
 ```
 
-### 1. Clone atau jalankan script installer:
+### jalankan script installer:
 
 ```bash
 bash <(curl -s https://raw.githubusercontent.com/RiSET-NET/BotMonitor/refs/heads/main/monitor.sh)
