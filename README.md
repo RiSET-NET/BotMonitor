@@ -26,6 +26,7 @@
 -Token Bot Telegram dan Channel ID
 -Optional: Akses root (untuk menjalankan via sudo, bisa diubah kalau tanpa root)
 
+---
 ## 🚀 Instalasi
 
 ```bash
