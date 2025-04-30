@@ -19,6 +19,8 @@
 - 🧪 Ringan dan bisa jalan di latar belakang
 
 ---
+---
+
 ## 📦 Dokumentasi Instalasi & Pemakaian
 
 -Termux dan Termux:Boot terbaru
