@@ -84,8 +84,8 @@ def ping_host(host="8.8.8.8"):
 
 def get_isp_info():
     try:
-        ip = requests.get("https://ipinfo.io/ip", timeout=5).text.strip()
-        isp = requests.get("https://ipinfo.io/org", timeout=5).text.strip()
+        ip = requests.get("https://ipinfo.io/ip", timeout=10).text.strip()
+        isp = requests.get("https://ipinfo.io/org", timeout=10).text.strip()
         isp = isp.replace("AS", "").strip()
         return ip or "N/A", isp or "N/A"
     except Exception as e:
@@ -140,7 +140,7 @@ while True:
             offline_end = now
             offline_duration = str(offline_end - offline_start).split(".")[0]
 
-            time.sleep(3)  # Tunggu sebelum ambil ISP
+            time.sleep(6)  # Tunggu sebelum ambil ISP
 
             ip_now, isp_now = get_isp_info()
             waktu = offline_end.strftime('%Y-%m-%d %H:%M:%S')
